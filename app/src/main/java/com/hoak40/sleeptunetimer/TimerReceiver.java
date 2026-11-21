@@ -23,9 +23,13 @@ public class TimerReceiver extends BroadcastReceiver {
             return;
         }
         boolean mute = TimerScheduler.shouldMute(context);
+        boolean lockScreen = TimerScheduler.shouldLock(context);
         MediaStopper.pauseMedia(context, mute);
         TimerScheduler.clear(context);
         showCompleteNotification(context);
+        if (lockScreen) {
+            ScreenLockAdminReceiver.lock(context);
+        }
     }
 
     private void showCompleteNotification(Context context) {

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">SleepTune Timer</string>
-    <string name="device_admin_explanation">Cho phép SleepTune khóa màn hình khi hết giờ hẹn. Chỉ dùng khi bạn bật tùy chọn khóa màn hình.</string>\n</resources>
+    <string name="device_admin_explanation">Cho phép SleepTune khóa màn hình khi hết giờ hẹn. Chỉ dùng khi bạn bật tùy chọn khóa màn hình.</string>
+</resources>

@@ -19,10 +19,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK tools
-        uses: android-actions/setup-android@v3
-      - name: Install Android API 36
-        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Prepare preinstalled Android SDK
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+          if [[ -z "$SDKMANAGER" || ! -x "$SDKMANAGER" ]]; then
+            echo "sdkmanager not found on GitHub runner" >&2
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;35.0.0"
       - name: Install Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:

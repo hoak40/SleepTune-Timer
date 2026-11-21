@@ -1,31 +1,38 @@
 # SleepTune Timer
 
-An offline Android sleep timer that pauses music apps playing in the background. No screen locking or forcibly closing apps.
+A simple **offline Android sleep timer** that pauses background music and optionally locks the screen when the countdown ends, useful for video apps such as TikTok.
 
 ## Features
 
-- Preset durations: 15, 30, 45, 60, 90 or 120 minutes; custom duration from 1 to 720 minutes.
-- Pauses active media sessions after the timer expires.
-- Optional mute-media fallback: lowers media volume to zero, without automatic restoration.
-- Uses exact alarms when allowed; falls back to approximate alarms.
-- Automatically re-schedules an active timer after a device restart.
+- Preset timers: 15, 30, 45, 60, 90 and 120 minutes; custom 1–720 minutes.
+- Pauses playing media sessions and sends a general media-pause command when needed.
+- **Optional screen lock at timeout** (for TikTok or other foreground video apps). Screen turns off and the phone is locked when the timer expires. Unlock using your normal screen lock.
+- Optional mute fallback: sets media volume to zero. You need to manually raise media volume afterwards.
+- Precise alarm when the permission is enabled, approximate alarm otherwise.
+- Reschedules active alarms when the phone restarts.
 
 ## Permissions
 
-Enable Notification access for SleepTune Timer to let it see and pause active media sessions. Enable Alarms and reminders for more accurate timing on Android 12+. Notification permission is optional for the timer completion alert.
+**Notification access:** Required to pause media sessions from other apps reliably. The app does not need Internet permission.
 
-Some apps might ignore the Android pause command. On some devices, aggressive battery optimizations can delay alarms.
+**Alarms and reminders (Android 12+):** Enables the most accurate timing; otherwise uses an inexact fallback.
 
-## Build APK
+**Device administrator (optional):** Required **only** when you turn on the **Tự khóa màn hình khi hết giờ (TikTok, video)** switch. The app requests Android's standard Device Admin permission with only the `force-lock` policy; then calls `DevicePolicyManager.lockNow()` at timeout. It does **not** close TikTok directly and does not change your lock-screen PIN or password. You can revoke its device administrator access in your Android settings.
 
-Open the **Actions** tab and choose **Build Android APK**. Select **Run workflow** (or push to the main branch). After successful completion, download the **SleepTune-Timer-debug-apk** artifact and install app-debug.apk on Android.
+**Notifications (Android 13+):** Optional completion notification.
 
-The workflow uses Java 17, Android SDK 36, Gradle 8.13 and Android Gradle Plugin 8.13.2.
+Some media apps ignore pause requests. Enabling the screen lock option helps with video apps that stop playback when the phone screen locks. Check behavior on your specific device.
 
-## Build locally
+## Build APK via GitHub Actions
 
-Open the project with Android Studio, using JDK 17, or run **gradle :app:assembleDebug** with the Android SDK installed.
+Open **Actions → Build Android APK → Run workflow**. Download the successful run's artifact **SleepTune-Timer-debug-apk** (containing `app-debug.apk`).
+
+The workflow uses the Android SDK already on GitHub's Ubuntu runner rather than `android-actions/setup-android`. It installs API 36 and uses Java 17 / Gradle 8.13 / Android Gradle Plugin 8.13.2.
+
+## Build in Android Studio
+
+Import this project and use JDK 17 with Android SDK 36.
 
 ## Privacy
 
-No Internet permission, advertising, accounts or tracking services. Settings are stored on-device. Android 8.0+ supported. Device testing still required.
+This app has no network or ad-tracking permissions and stores all timer settings locally. The project has not yet been confirmed to compile and run on a physical phone.

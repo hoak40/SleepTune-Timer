@@ -11,6 +11,7 @@ public final class TimerScheduler {
     private static final String PREFS = "timer_prefs";
     private static final String KEY_DEADLINE = "deadline";
     private static final String KEY_MUTE = "mute_media";
+    private static final String KEY_LOCK = "lock_screen";
     static final String ACTION_FIRE = "com.hoak40.sleeptunetimer.ACTION_FIRE";
 
     private TimerScheduler() { }
@@ -23,18 +24,22 @@ public final class TimerScheduler {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MUTE, false);
     }
 
+    static boolean shouldLock(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_LOCK, false);
+    }
+
     static boolean canUseExactAlarms(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true;
         AlarmManager alarm = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         return alarm != null && alarm.canScheduleExactAlarms();
     }
 
-    static void start(Context context, int minutes, boolean mute) {
+    static void start(Context context, int minutes, boolean mute, boolean lock) {
         if (minutes < 1 || minutes > 720) throw new IllegalArgumentException("Minutes out of range");
         cancelAlarm(context);
         long deadline = System.currentTimeMillis() + minutes * 60_000L;
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        prefs.edit().putLong(KEY_DEADLINE, deadline).putBoolean(KEY_MUTE, mute).commit();
+        prefs.edit().putLong(KEY_DEADLINE, deadline).putBoolean(KEY_MUTE, mute).putBoolean(KEY_LOCK, lock).commit();
         schedule(context, deadline);
     }
 
@@ -45,7 +50,7 @@ public final class TimerScheduler {
 
     static void clear(Context context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().remove(KEY_DEADLINE).remove(KEY_MUTE).commit();
+                .edit().remove(KEY_DEADLINE).remove(KEY_MUTE).remove(KEY_LOCK).commit();
     }
 
     static void rescheduleIfNeeded(Context context) {

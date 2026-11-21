@@ -2,6 +2,7 @@ package com.hoak40.sleeptunetimer;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.admin.DevicePolicyManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
@@ -45,7 +46,8 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView countdownText, stateText, helperText, permissionText;
     private Button startButton, cancelButton;
-    private Switch muteSwitch;
+    private Switch muteSwitch, lockSwitch;
+    private boolean pendingEnableLock;
     private EditText customInput;
     private Button[] presetButtons;
     private int selectedMinutes = 30;
@@ -70,6 +72,12 @@ public class MainActivity extends Activity {
         super.onResume();
         handler.removeCallbacks(ticker);
         ticker.run();
+        if (pendingEnableLock) {
+            pendingEnableLock = false;
+            if (lockSwitch != null) {
+                lockSwitch.setChecked(ScreenLockAdminReceiver.isEnabled(this));
+            }
+        }
         refreshPermissions();
     }
 
@@ -238,11 +246,30 @@ public class MainActivity extends Activity {
         add(options, text("Tùy chọn này giúp im tiếng với app không nhận Pause. Bạn cần tự tăng âm lượng lại sau đó.",
                 12, MUTED, false), -1, 9);
 
+        lockSwitch = new Switch(this);
+        lockSwitch.setText("Tự khóa màn hình khi hết giờ (TikTok, video)");
+        lockSwitch.setTextColor(TEXT);
+        lockSwitch.setTextSize(14);
+        lockSwitch.setChecked(TimerScheduler.shouldLock(this) && ScreenLockAdminReceiver.isEnabled(this));
+        add(options, lockSwitch, -1, 17);
+        add(options, text("Màn hình sẽ tắt và khóa khi hết giờ. Khi mở lại có thể cần mã PIN, mật khẩu hoặc sinh trắc học.",
+                12, MUTED, false), -1, 8);
+        lockSwitch.setOnCheckedChangeListener((button, checked) -> {
+            if (checked && !ScreenLockAdminReceiver.isEnabled(this)) {
+                lockSwitch.setChecked(false);
+                requestScreenLockPermission();
+            }
+        });
+
         startButton = button("▶  Bắt đầu hẹn giờ", ACCENT, BG);
         add(root, startButton, 59, 21);
         startButton.setOnClickListener(v -> {
             try {
-                TimerScheduler.start(this, selectedMinutes, muteSwitch.isChecked());
+                if (lockSwitch.isChecked() && !ScreenLockAdminReceiver.isEnabled(this)) {
+                    requestScreenLockPermission();
+                    return;
+                }
+                TimerScheduler.start(this, selectedMinutes, muteSwitch.isChecked(), lockSwitch.isChecked());
                 refreshTimerUi();
                 Toast.makeText(this, "Đã bật hẹn giờ", Toast.LENGTH_SHORT).show();
                 if (!MediaStopper.hasNotificationAccess(this)) {
@@ -275,13 +302,35 @@ public class MainActivity extends Activity {
                 safeOpenSettings(settings);
             });
         }
+        Button adminButton = button("Cấp quyền tự khóa màn hình", SURFACE_ALT, TEXT);
+        add(permissions, adminButton, 48, 10);
+        adminButton.setOnClickListener(v -> requestScreenLockPermission());
         if (Build.VERSION.SDK_INT >= 33) {
             Button notifyButton = button("Cho phép thông báo khi kết thúc", SURFACE_ALT, TEXT);
             add(permissions, notifyButton, 48, 10);
             notifyButton.setOnClickListener(v -> requestPermissions(
                     new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101));
         }
-        add(root, text("Không cần Internet • Không tắt màn hình • Không đóng cưỡng bức ứng dụng", 12, MUTED, false), -1, 18);
+        add(root, text("Không cần Internet • Chỉ khóa màn hình khi bạn bật tùy chọn • Không đóng cưỡng bức ứng dụng", 12, MUTED, false), -1, 18);
+    }
+
+    private void requestScreenLockPermission() {
+        if (ScreenLockAdminReceiver.isEnabled(this)) {
+            if (lockSwitch != null) lockSwitch.setChecked(true);
+            Toast.makeText(this, "Quyền khóa màn hình đã được cấp", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, ScreenLockAdminReceiver.component(this));
+        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                getString(R.string.device_admin_explanation));
+        try {
+            pendingEnableLock = true;
+            startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            pendingEnableLock = false;
+            Toast.makeText(this, "Thiết bị không hỗ trợ quyền khóa màn hình này", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void safeOpenSettings(Intent intent) {
@@ -332,9 +381,12 @@ public class MainActivity extends Activity {
         if (permissionText == null) return;
         boolean listener = MediaStopper.hasNotificationAccess(this);
         boolean exact = TimerScheduler.canUseExactAlarms(this);
+        boolean lock = ScreenLockAdminReceiver.isEnabled(this);
         permissionText.setText((listener ? "✓" : "○") + " Điều khiển nhạc: "
                 + (listener ? "Đã cấp" : "Chưa cấp") + "\n"
                 + (exact ? "✓" : "○") + " Hẹn giờ chính xác: "
-                + (exact ? "Đã bật" : "Chưa bật, sẽ dùng hẹn giờ gần đúng"));
+                + (exact ? "Đã bật" : "Chưa bật, sẽ dùng hẹn giờ gần đúng") + "\n"
+                + (lock ? "✓" : "○") + " Khóa màn hình: "
+                + (lock ? "Đã cấp" : "Chưa cấp"));
     }
 }
